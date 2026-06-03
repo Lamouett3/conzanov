@@ -1,0 +1,1486 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>CONZANOV</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;overflow:hidden;background:#0d0604;}
+body{display:flex;align-items:center;justify-content:center;font-family:'Press Start 2P',monospace;touch-action:manipulation;}
+
+#wrap{position:relative;width:100%;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+canvas{display:block;image-rendering:pixelated;background:#2a1410;cursor:pointer;}
+
+/* HUD */
+#hud{position:absolute;top:14px;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-start;padding:0 16px;pointer-events:none;}
+#hearts{display:flex;gap:6px;font-size:22px;filter:drop-shadow(2px 2px 0 #000);}
+#rightHud{text-align:right;text-shadow:2px 2px 0 #000;}
+#score{color:#fff;font-size:11px;line-height:1.7;}
+#score b{color:#ffcf3f;}
+#level{color:#9fd8ff;font-size:8px;margin-top:5px;}
+#zone{color:#ffd2a0;font-size:7px;margin-top:3px;}
+#combo{color:#ff7a3f;font-size:9px;margin-top:4px;min-height:11px;}
+
+#lvlUp{position:absolute;top:40%;left:0;right:0;text-align:center;font-family:'Oswald',sans-serif;font-weight:700;
+  font-size:30px;letter-spacing:2px;color:#ffd23f;text-shadow:3px 3px 0 #d8262c,5px 5px 0 #1a0604;
+  opacity:0;pointer-events:none;text-transform:uppercase;line-height:1.1;}
+#lvlUp small{display:block;font-size:13px;letter-spacing:3px;color:#fff;margin-top:6px;}
+
+/* Overlay */
+#overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  background:repeating-linear-gradient(135deg,#7a1410 0 22px,#6a100c 22px 44px);text-align:center;padding:22px 18px;overflow-y:auto;}
+#overlay.hide{display:none;}
+.banner{position:relative;padding:4px 0;}
+.title{font-family:'Oswald',sans-serif;font-weight:700;font-size:clamp(46px,15vw,94px);line-height:.82;letter-spacing:2px;
+  color:#ffd23f;text-transform:uppercase;text-shadow:4px 0 0 #6a100c,8px 8px 0 #1a0604,-2px -2px 0 #fff3c4;transform:scaleY(1.25);display:inline-block;}
+.sub{font-family:'Oswald',sans-serif;font-weight:500;letter-spacing:6px;color:#fff;font-size:clamp(10px,3vw,15px);margin-top:14px;text-transform:uppercase;}
+.star{color:#ffd23f;font-size:20px;}
+.rules{background:#1a0604;border:3px solid #ffd23f;box-shadow:6px 6px 0 #000;max-width:430px;width:100%;padding:16px;text-align:left;}
+.rules h2{font-family:'Oswald',sans-serif;font-weight:700;letter-spacing:3px;color:#ffd23f;font-size:14px;text-transform:uppercase;margin-bottom:12px;text-align:center;}
+.rule{display:flex;gap:10px;align-items:flex-start;margin:9px 0;color:#f0e6d2;font-size:9px;line-height:1.7;}
+.rule .ic{font-size:18px;width:24px;text-align:center;flex-shrink:0;}
+.rule b{color:#ffcf3f;}
+#btn{font-family:'Oswald',sans-serif;font-weight:700;font-size:20px;letter-spacing:3px;color:#1a0604;background:#ffd23f;border:3px solid #fff;
+  padding:14px 40px;cursor:pointer;box-shadow:6px 6px 0 #000;text-transform:uppercase;transition:transform .05s;}
+#btn:active{transform:translate(3px,3px);box-shadow:3px 3px 0 #000;}
+.foot{color:#e8c0a0;font-size:8px;letter-spacing:1px;line-height:1.8;}
+
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game" width="450" height="800"></canvas>
+
+  <div id="hud">
+    <div id="hearts"></div>
+    <div id="rightHud">
+      <div id="score">SCORE <b id="scoreVal">0</b></div>
+      <div id="level">NIVEAU 1</div>
+      <div id="zone">— Banlieue rouge —</div>
+      <div id="combo"></div>
+    </div>
+  </div>
+
+  <div id="lvlUp"></div>
+
+  <div id="overlay">
+    <div class="banner">
+      <div class="star">★</div>
+      <div class="title">CONZA<br>NOV</div>
+      <div class="sub">Camarade Contrôleur</div>
+    </div>
+    <div class="rules">
+      <h2>★ Directives ★</h2>
+      <div class="rule"><span class="ic">⌨️</span><span><b>PC :</b> appuie sur <b>ESPACE</b> (ou clic) pour sauter. Chaque appui = un saut.</span></div>
+      <div class="rule"><span class="ic">📱</span><span><b>Mobile :</b> touche l'écran pour sauter.</span></div>
+      <div class="rule"><span class="ic">⏫</span><span><b>TRIPLE SAUT :</b> en l'air, appuie de nouveau pour rebondir, jusqu'à <b>2 fois</b> de plus.</span></div>
+      <div class="rule"><span class="ic">🦔</span><span><b>HÉRISSONS :</b> obstacles au sol, saute par-dessus. Certains <b>bondissent en l'air</b> : passe dessous ou esquive entre deux sauts !</span></div>
+      <div class="rule"><span class="ic">🚐</span><span><b>CARAVANES :</b> obstacles hauts et larges, grand saut requis.</span></div>
+      <div class="rule"><span class="ic">🟧</span><span><b>FAGOT DE CUIVRE :</b> attrape-le en l'air pour <b>regagner un cœur</b> ❤️.</span></div>
+      <div class="rule"><span class="ic">🚄</span><span><b>3 vies.</b> Le train part lentement puis <b>accélère à chaque niveau</b>, et le <b>paysage évolue</b> !</span></div>
+    </div>
+    <button id="btn">Commencer</button>
+    <div class="foot">Bon voyage, camarade.</div>
+  </div>
+</div>
+
+<!-- Modules chargés dans l'ordre des dépendances -->
+<script>
+/* ===== js/config.js ===== */
+/* =========================================================
+   CONZANOV — config.js
+   Constantes globales + définition des "zones" de paysage
+   qui évoluent au fil des niveaux.
+   ========================================================= */
+
+const CFG = {
+  // dimensions logiques du canvas (recalculées selon l'écran, voir recompute)
+  W: 450,
+  H: 800,
+
+  // physique
+  GRAV: 0.62,
+  JUMP: -12.0,       // impulsion d'un appui (saut instantané, façon Flappy Bird)
+  DBL_JUMP: -11.0,   // impulsion du 2e saut (double)
+  TRIPLE_JUMP: -10.0,// impulsion du 3e saut (triple)
+  MAX_JUMPS: 3,      // nombre total de sauts enchaînables (sol + 2 aériens)
+
+  // vitesse / progression
+  SPEED_START: 2.4,        // départ tranquille
+  SPEED_PER_LEVEL: 0.9,    // gain de vitesse par niveau
+  SPEED_DRIFT: 0.6,        // dérive douce à l'intérieur d'un niveau
+  LEVEL_DIST: 1500,        // "distance" (score brut) par niveau
+
+  // tailles obstacles (agrandis et plus visibles)
+  HEDGEHOG: { w: 54, h: 42 },
+  CARAVAN:  { w: 116, h: 86 },
+  FAGOT:    { w: 26, h: 30 },
+};
+
+/* ---------------------------------------------------------
+   Résolution logique ADAPTATIVE
+   On choisit une résolution interne dont le ratio colle à
+   celui de l'écran : format paysage large sur desktop,
+   format vertical sur mobile. On borne la hauteur logique
+   pour garder une physique et des tailles cohérentes, et le
+   "sol" reste toujours à une distance fixe du bas.
+   --------------------------------------------------------- */
+CFG.recompute = function (vw, vh) {
+  const ratio = vw / vh;
+  // hauteur logique cible : ~800 de référence, légèrement bornée
+  let H = 800;
+  let W = Math.round(H * ratio);
+  // bornes raisonnables sur la largeur logique
+  W = Math.max(420, Math.min(W, 1500));
+  CFG.W = W;
+  CFG.H = H;
+  // le sol est toujours à 150 px du bas ; le rail 22 px en dessous
+  CFG.GROUND = CFG.H - 150;
+  CFG.RAIL_TOP = CFG.GROUND + 22;
+};
+
+// init par défaut (sera recalculé au chargement par main.js)
+CFG.GROUND = CFG.H - 150;
+CFG.RAIL_TOP = CFG.GROUND + 22;
+
+/* ---------------------------------------------------------
+   ZONES DE PAYSAGE
+   Chaque palier de niveaux a sa propre palette + ambiance.
+   Le moteur interpole les couleurs du ciel d'une zone à l'autre
+   pour un défilé progressif du paysage.
+   --------------------------------------------------------- */
+const ZONES = [
+  {
+    name: 'Banlieue rouge',
+    fromLevel: 1,
+    sky: ['#8e2b3a', '#c44a3a', '#e07a40', '#f0a850', '#f6cd7a'],
+    sun: '#ffd23f',
+    mountain: '#9a3a36',
+    snow: '#fff3e0',
+    building: '#6e221c',
+    buildingHi: '#8a322a',
+    window: '#ffcf6a',
+    flag: '#c8201a',
+    ground: '#4a2a1c',
+    grass: '#7a5a28',
+    weather: 'clear',
+  },
+  {
+    name: 'Plaines de blé',
+    fromLevel: 3,
+    sky: ['#3a6ea5', '#5a92c0', '#9ec8e0', '#e8d88a', '#f0c850'],
+    sun: '#fff0a0',
+    mountain: '#4a7a5a',
+    snow: '#eaffe0',
+    building: '#7a5a2a',
+    buildingHi: '#9a7a3a',
+    window: '#fff0a0',
+    flag: '#c8201a',
+    ground: '#5a4420',
+    grass: '#8a9a30',
+    weather: 'clear',
+  },
+  {
+    name: 'Cité industrielle',
+    fromLevel: 5,
+    sky: ['#2a2438', '#46405e', '#6a5a78', '#9a7a6a', '#c89a6a'],
+    sun: '#e8b060',
+    mountain: '#3a3448',
+    snow: '#cfcfe0',
+    building: '#39323f',
+    buildingHi: '#4e4654',
+    window: '#ffd24a',
+    flag: '#d8201a',
+    ground: '#2e2630',
+    grass: '#4a4632',
+    weather: 'smog',
+  },
+  {
+    name: 'Steppe enneigée',
+    fromLevel: 7,
+    sky: ['#46566e', '#6a7e96', '#9ab0c4', '#cfe0ea', '#eef6fa'],
+    sun: '#ffffff',
+    mountain: '#7a8ea0',
+    snow: '#ffffff',
+    building: '#5a6a7a',
+    buildingHi: '#7a8a9a',
+    window: '#bfe0ff',
+    flag: '#d8201a',
+    ground: '#aeb8c4',
+    grass: '#cfd8e0',
+    weather: 'snow',
+  },
+  {
+    name: 'Nuit des soviets',
+    fromLevel: 9,
+    sky: ['#0d1228', '#1a2240', '#2e2e54', '#5a2e4a', '#7a3a40'],
+    sun: '#ffe27a',
+    mountain: '#1a2038',
+    snow: '#dfe6ff',
+    building: '#171c30',
+    buildingHi: '#262c44',
+    window: '#ffe24a',
+    flag: '#e8201a',
+    ground: '#161420',
+    grass: '#2a2638',
+    weather: 'stars',
+  },
+];
+
+// renvoie la zone correspondant à un niveau donné
+function zoneForLevel(level) {
+  let z = ZONES[0];
+  for (const zone of ZONES) {
+    if (level >= zone.fromLevel) z = zone;
+  }
+  return z;
+}
+
+/* ===== js/utils.js ===== */
+/* =========================================================
+   CONZANOV — utils.js
+   Petites fonctions partagées : dessin pixel, lignes,
+   particules et interpolation de couleurs hex.
+   ========================================================= */
+
+// rectangle "pixel" arrondi à l'entier
+function px(ctx, x, y, w, h, c) {
+  ctx.fillStyle = c;
+  ctx.fillRect(x | 0, y | 0, w, h);
+}
+
+// segment épais avec bouts ronds (utile pour les membres articulés)
+function thickLine(ctx, x1, y1, x2, y2, wd, col) {
+  ctx.strokeStyle = col;
+  ctx.lineWidth = wd;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2, y2);
+  ctx.stroke();
+}
+
+/* ---- Couleurs : conversion hex <-> rgb + interpolation ---- */
+function hexToRgb(h) {
+  h = h.replace('#', '');
+  return [
+    parseInt(h.substring(0, 2), 16),
+    parseInt(h.substring(2, 4), 16),
+    parseInt(h.substring(4, 6), 16),
+  ];
+}
+function rgbToCss(r, g, b) {
+  return `rgb(${r | 0},${g | 0},${b | 0})`;
+}
+// mélange deux couleurs hex selon t ∈ [0,1]
+function lerpColor(a, b, t) {
+  const ca = hexToRgb(a), cb = hexToRgb(b);
+  return rgbToCss(
+    ca[0] + (cb[0] - ca[0]) * t,
+    ca[1] + (cb[1] - ca[1]) * t,
+    ca[2] + (cb[2] - ca[2]) * t
+  );
+}
+
+/* ---- Système de particules ultra simple ---- */
+class Particles {
+  constructor() { this.list = []; }
+  burst(x, y, c, n, spread = 4) {
+    for (let i = 0; i < n; i++) {
+      this.list.push({
+        x, y,
+        vx: (Math.random() - 0.5) * spread,
+        vy: -Math.random() * 3,
+        life: 18, c, s: 3,
+      });
+    }
+  }
+  ring(x, y, c, n = 10, speed = 3) {
+    for (let i = 0; i < n; i++) {
+      const a = (Math.PI * 2 * i) / n;
+      this.list.push({
+        x, y,
+        vx: Math.cos(a) * speed,
+        vy: Math.sin(a) * speed,
+        life: 14, c, s: 3,
+      });
+    }
+  }
+  update(ctx) {
+    for (let i = this.list.length - 1; i >= 0; i--) {
+      const p = this.list[i];
+      p.x += p.vx; p.y += p.vy; p.vy += 0.2; p.life--;
+      ctx.globalAlpha = Math.max(0, p.life / 18);
+      px(ctx, p.x, p.y, p.s, p.s, p.c);
+      ctx.globalAlpha = 1;
+      if (p.life <= 0) this.list.splice(i, 1);
+    }
+  }
+  clear() { this.list.length = 0; }
+}
+
+/* ===== js/background.js ===== */
+/* =========================================================
+   CONZANOV — background.js
+   Décor multi-couches en parallaxe qui ÉVOLUE selon la zone.
+   - couleurs de ciel interpolées d'une zone à l'autre
+   - montagnes, ville, drapeaux (ancrés au sol), météo
+   - sol unifié : herbe + ballast + traverses + 2 rails
+   ========================================================= */
+
+class Background {
+  constructor() {
+    this.clouds = [];
+    this.birds = [];
+    this.flakes = [];   // neige / cendres / étoiles selon météo
+    this.reset();
+  }
+
+  reset() {
+    const W = CFG.W;
+    this.clouds = [
+      { x: 80,  y: 120, s: 1.0 },
+      { x: 300, y: 80,  s: 0.7 },
+      { x: 200, y: 200, s: 1.3 },
+    ];
+    this.birds = [
+      { x: 300, y: 160, ph: 0 },
+      { x: 360, y: 180, ph: 1 },
+    ];
+    this.flakes = [];
+    for (let i = 0; i < 40; i++) {
+      this.flakes.push({
+        x: Math.random() * W,
+        y: Math.random() * CFG.H,
+        sp: 0.5 + Math.random() * 1.5,
+        sw: Math.random() * 2,
+        r: 1 + Math.random() * 2,
+      });
+    }
+    this.cur = ZONES[0];   // zone affichée (interpolée)
+    this.target = ZONES[0];
+    this.blend = 1;        // 1 = totalement sur target
+  }
+
+  // appelé quand le niveau change : amorce une transition douce
+  setZone(zone) {
+    if (zone === this.target) return;
+    this.cur = this.target;
+    this.target = zone;
+    this.blend = 0;
+  }
+
+  // couleur interpolée entre zone courante et cible
+  _sky(i) {
+    const a = this.cur.sky[i], b = this.target.sky[i];
+    return lerpColor(a, b, this.blend);
+  }
+  _mix(key) {
+    return lerpColor(this.cur[key], this.target[key], this.blend);
+  }
+
+  draw(ctx, speed, bgX, frame) {
+    const W = CFG.W, H = CFG.H, G = CFG.GROUND;
+
+    // avance la transition de zone
+    if (this.blend < 1) this.blend = Math.min(1, this.blend + 0.02);
+
+    /* ---------- CIEL ---------- */
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0.00, this._sky(0));
+    g.addColorStop(0.32, this._sky(1));
+    g.addColorStop(0.58, this._sky(2));
+    g.addColorStop(0.80, this._sky(3));
+    g.addColorStop(1.00, this._sky(4));
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    /* ---------- SOLEIL / LUNE de propagande ---------- */
+    const cx = W * 0.68, cy = H * 0.24, r = 64;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.fillStyle = 'rgba(255,214,90,.16)';
+    for (let i = 0; i < 18; i++) {
+      ctx.rotate(Math.PI * 2 / 18 + 0.0008);
+      ctx.beginPath();
+      ctx.moveTo(0, 0); ctx.lineTo(640, -20); ctx.lineTo(640, 20);
+      ctx.fill();
+    }
+    ctx.restore();
+    const sunC = this._mix('sun');
+    const sg = ctx.createRadialGradient(cx, cy, 8, cx, cy, r);
+    sg.addColorStop(0, '#fff6d0');
+    sg.addColorStop(0.6, sunC);
+    sg.addColorStop(1, sunC);
+    ctx.fillStyle = sg;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, 7); ctx.fill();
+
+    /* ---------- NUAGES + OISEAUX ---------- */
+    this.clouds.forEach(c => {
+      c.x -= speed * 0.08 * c.s;
+      if (c.x < -100) c.x = W + 60;
+      ctx.fillStyle = 'rgba(255,235,210,.5)';
+      const y = c.y, s = c.s;
+      ctx.beginPath();
+      ctx.arc(c.x, y, 16 * s, 0, 7);
+      ctx.arc(c.x + 20 * s, y - 6 * s, 20 * s, 0, 7);
+      ctx.arc(c.x + 44 * s, y, 16 * s, 0, 7);
+      ctx.arc(c.x + 22 * s, y + 8 * s, 18 * s, 0, 7);
+      ctx.fill();
+    });
+    this.birds.forEach(b => {
+      b.x -= speed * 0.12; b.ph += 0.15;
+      if (b.x < -20) { b.x = W + 40; b.y = 120 + Math.random() * 80; }
+      const fy = Math.sin(b.ph) * 3;
+      ctx.strokeStyle = 'rgba(40,20,20,.55)'; ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y + fy);
+      ctx.lineTo(b.x + 5, b.y - 3 + fy);
+      ctx.lineTo(b.x + 10, b.y + fy);
+      ctx.stroke();
+    });
+
+    /* ---------- COUCHE LOINTAINE : montagnes ---------- */
+    const o0 = (bgX * 0.15) % 320;
+    const reps0 = Math.ceil(W / 320) + 2;
+    ctx.fillStyle = this._mix('mountain');
+    for (let i = -1; i < reps0; i++) {
+      const mx = i * 320 - o0;
+      ctx.beginPath();
+      ctx.moveTo(mx, G); ctx.lineTo(mx + 160, G - 150); ctx.lineTo(mx + 320, G);
+      ctx.fill();
+    }
+    ctx.fillStyle = this._mix('snow');
+    for (let i = -1; i < reps0; i++) {
+      const mx = i * 320 - o0;
+      ctx.beginPath();
+      ctx.moveTo(mx + 140, G - 128); ctx.lineTo(mx + 160, G - 150); ctx.lineTo(mx + 180, G - 128);
+      ctx.fill();
+    }
+
+    /* ---------- COUCHE MOYENNE : ville ---------- */
+    const o1 = (bgX * 0.35) % 240;
+    const reps1 = Math.ceil(W / 240) + 2;
+    const bC = this._mix('building'), bHi = this._mix('buildingHi'), win = this._mix('window');
+    for (let i = -1; i < reps1; i++) {
+      const bx = i * 240 - o1;
+      px(ctx, bx, G - 110, 52, 110, bC);
+      px(ctx, bx, G - 110, 52, 5, bHi);
+      for (let wy = 0; wy < 4; wy++)
+        for (let wx = 0; wx < 3; wx++)
+          px(ctx, bx + 8 + wx * 14, G - 96 + wy * 22, 7, 9, win);
+      // cheminée
+      px(ctx, bx + 62, G - 150, 26, 150, bC);
+      px(ctx, bx + 60, G - 156, 30, 8, bHi);
+      // fumée
+      ctx.fillStyle = 'rgba(90,70,70,.35)';
+      const sm = (frame * 0.4) % 30;
+      ctx.beginPath(); ctx.arc(bx + 75, G - 168 - sm, 8 + sm * 0.3, 0, 7); ctx.fill();
+      // 2e bloc
+      px(ctx, bx + 100, G - 78, 70, 78, bC);
+      for (let wy = 0; wy < 3; wy++)
+        for (let wx = 0; wx < 4; wx++)
+          px(ctx, bx + 108 + wx * 14, G - 66 + wy * 22, 7, 9, win);
+    }
+
+    /* ---------- COUCHE PROCHE : drapeaux ANCRÉS AU SOL ---------- */
+    const o2 = (bgX * 0.6) % 300;
+    const flagC = this._mix('flag');
+    const reps2 = Math.ceil(W / 300) + 2;
+    for (let i = -1; i < reps2; i++) {
+      const fx = i * 300 - o2 + 40;
+      // mât planté dans le sol : du sol (G+14) jusqu'en haut
+      const poleTop = G - 150;
+      px(ctx, fx, poleTop, 5, (G + 14) - poleTop, '#2a0c08');
+      px(ctx, fx, poleTop, 5, 4, '#5a3020'); // embout
+      // drapeau ondulant en haut du mât
+      const wave = Math.sin(frame * 0.08 + i) * 5;
+      ctx.fillStyle = flagC;
+      ctx.beginPath();
+      ctx.moveTo(fx + 5, poleTop + 6);
+      ctx.lineTo(fx + 52, poleTop + 14 + wave);
+      ctx.lineTo(fx + 52, poleTop + 40 + wave);
+      ctx.lineTo(fx + 5, poleTop + 32);
+      ctx.fill();
+      // étoile + faucille-marteau stylisés
+      px(ctx, fx + 16, poleTop + 18, 5, 5, '#ffd23f');
+      px(ctx, fx + 14, poleTop + 20, 9, 2, '#ffd23f');
+      px(ctx, fx + 18, poleTop + 16, 2, 9, '#ffd23f');
+    }
+
+    /* ---------- MÉTÉO selon la zone ---------- */
+    this._weather(ctx, speed, frame);
+  }
+
+  _weather(ctx, speed, frame) {
+    const W = CFG.W, H = CFG.H;
+    const w = this.target.weather;
+    if (w === 'clear') return;
+
+    if (w === 'smog') {
+      ctx.fillStyle = 'rgba(120,100,80,.12)';
+      ctx.fillRect(0, 0, W, H);
+      return;
+    }
+    if (w === 'stars') {
+      for (const f of this.flakes) {
+        // étoiles fixes scintillantes
+        const tw = (Math.sin(frame * 0.05 + f.x) + 1) * 0.5;
+        ctx.globalAlpha = 0.3 + tw * 0.6;
+        px(ctx, f.x, f.y * 0.5, 2, 2, '#fff');
+        ctx.globalAlpha = 1;
+      }
+      return;
+    }
+    // neige : flocons qui tombent et défilent
+    if (w === 'snow') {
+      ctx.fillStyle = '#fff';
+      for (const f of this.flakes) {
+        f.y += f.sp;
+        f.x -= speed * 0.3 + Math.sin(frame * 0.02 + f.y) * f.sw * 0.1;
+        if (f.y > H) { f.y = -4; f.x = Math.random() * W; }
+        if (f.x < -4) f.x = W;
+        ctx.globalAlpha = 0.8;
+        ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, 7); ctx.fill();
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+
+  /* ---------- SOL unifié (défile au premier plan) ---------- */
+  drawGround(ctx, bgX) {
+    const W = CFG.W, H = CFG.H, G = CFG.GROUND;
+    const grass = this._mix('grass');
+    const grd = this._mix('ground');
+
+    // bande d'herbe juste sous les pieds
+    px(ctx, 0, G + 2, W, 12, grass);
+    px(ctx, 0, G + 2, W, 3, lerpColor(grass, '#ffffff', 0.18));
+    // touffes d'herbe défilantes
+    const og = (bgX * 0.6) % 60;
+    ctx.fillStyle = lerpColor(grass, '#000000', 0.12);
+    for (let x = -og; x < W; x += 60) {
+      ctx.beginPath();
+      ctx.moveTo(x, G + 4); ctx.lineTo(x + 4, G - 4); ctx.lineTo(x + 8, G + 4);
+      ctx.fill();
+    }
+    // ballast
+    px(ctx, 0, G + 14, W, H - (G + 14), grd);
+    px(ctx, 0, G + 14, W, 4, lerpColor(grd, '#ffffff', 0.12));
+    // cailloux
+    ctx.fillStyle = lerpColor(grd, '#ffffff', 0.18);
+    const oc = bgX % 24;
+    for (let x = -oc; x < W; x += 24) { px(ctx, x, G + 22, 4, 3); px(ctx, x + 12, G + 30, 3, 3); }
+    // traverses bois
+    const ot = bgX % 50;
+    for (let x = -ot; x < W; x += 50) {
+      px(ctx, x, G + 24, 20, 9, '#5a3a1e');
+      px(ctx, x, G + 24, 20, 2, '#7a4f2a');
+    }
+    // deux rails métal
+    px(ctx, 0, G + 22, W, 4, '#c0c0d0'); px(ctx, 0, G + 22, W, 1, '#fff');
+    px(ctx, 0, G + 34, W, 4, '#9aa0b0'); px(ctx, 0, G + 34, W, 1, '#d0d0e0');
+  }
+}
+
+/* ===== js/player.js ===== */
+/* =========================================================
+   CONZANOV — player.js
+   Le contrôleur "Conzanov" : crâne dégarni, cheveux gris
+   plaqués en arrière, barbe grise, veste SNCF, bras croisés.
+   Court avec les pieds au sol et les jambes animées.
+   Gère saut chargé + double saut (1 seul, corrigé).
+   ========================================================= */
+
+class Player {
+  constructor() { this.reset(); }
+
+  reset() {
+    this.x = 110;
+    this.y = CFG.GROUND;
+    this.w = 64;     // plus large : personnage dodu
+    this.h = 74;
+    this.vy = 0;
+    this.onGround = true;
+    this.jumps = 0;          // 0 au sol ; 1 après 1er saut ; 2 après double saut
+    this.runPhase = 0;
+    this.squash = 0;
+    this.blink = 0;
+  }
+
+  // hitbox pour les collisions (un peu plus large que l'ancien corps,
+  // mais volontairement indulgente par rapport au sprite dodu)
+  get bounds() {
+    return {
+      L: this.x - 22,
+      R: this.x + 22,
+      T: this.y - this.h + 14,
+      B: this.y,
+    };
+  }
+
+  /* ---- entrée : un appui = une impulsion immédiate (façon Flappy Bird) ----
+     - au sol : 1er saut
+     - en l'air : jusqu'à 2 sauts supplémentaires (triple saut au total)
+  */
+  tap(parts) {
+    if (this.onGround || this.jumps === 0) {
+      this.vy = CFG.JUMP;
+      this.onGround = false;
+      this.jumps = 1;
+      this.squash = 8;
+      parts.burst(this.x, CFG.GROUND + 2, '#d8c0a0', 10);
+      return 'jump';
+    }
+    if (this.jumps < CFG.MAX_JUMPS) {
+      this.jumps++;
+      // chaque saut aérien est un peu plus léger que le précédent
+      this.vy = this.jumps === 2 ? CFG.DBL_JUMP : CFG.TRIPLE_JUMP;
+      this.squash = 6;
+      // couleur différente pour le 3e saut
+      const col = this.jumps === 2 ? '#9fd8ff' : '#ffcf6a';
+      parts.ring(this.x, this.y - this.h / 2, col, 12, 3);
+      return this.jumps === 2 ? 'double' : 'triple';
+    }
+    return null; // déjà au max de sauts
+  }
+
+  /* ---- physique ---- */
+  update(speed, parts) {
+    this.vy += CFG.GRAV;
+    this.y += this.vy;
+    if (this.y >= CFG.GROUND) {
+      this.y = CFG.GROUND;
+      this.vy = 0;
+      if (!this.onGround) {
+        parts.burst(this.x, CFG.GROUND + 2, '#c8a888', 8);
+        this.squash = 6;
+      }
+      this.onGround = true;
+      this.jumps = 0;          // reset propre : on pourra re-sauter + double sauter
+    }
+    if (this.squash > 0) this.squash -= 0.6;
+    this.runPhase += 0.18 + speed * 0.05;
+    if (Math.random() < 0.012) this.blink = 6;
+  }
+
+  /* ---- rendu ---- */
+  draw(ctx) {
+    const sq = this.squash;
+    const w = this.w, h = this.h - sq * 0.6;
+    const cx = this.x, base = this.y;
+    const x = cx - w / 2, top = base - h;
+    const air = !this.onGround;
+    const rp = this.runPhase;
+
+    // ombre au sol (large, pour le gros gabarit)
+    ctx.fillStyle = 'rgba(0,0,0,.28)';
+    ctx.beginPath();
+    ctx.ellipse(cx, CFG.GROUND + 8, 30 - sq, 6, 0, 0, 7);
+    ctx.fill();
+
+    // ===== JAMBES (course alternée, pieds au sol) =====
+    // jambes écartées et trapues pour soutenir le gros corps
+    const swingA = air ? 0 : Math.sin(rp);
+    const swingB = air ? 0 : Math.sin(rp + Math.PI);
+    this._leg(ctx, x + 20, base, swingA, air, '#141a29');
+    this._leg(ctx, x + 44, base, swingB, air, '#1a2233');
+
+    // ===== TORSE : gros ventre bien rond en veste SNCF =====
+    const bw = w - 4;            // largeur du torse (presque tout le perso)
+    const bx = x + 2;
+    const bTop = top + 18;
+    const bH = 40;               // torse haut et bombé
+    // forme arrondie du ventre : rectangle + arrondis sur les coins
+    ctx.fillStyle = '#2b313d';
+    this._roundBody(ctx, bx, bTop, bw, bH, 16);
+    // dégradés de volume (lumière à gauche, ombre sur les flancs)
+    ctx.fillStyle = '#343b48';
+    this._roundBody(ctx, bx + 6, bTop + 4, bw - 12, bH - 10, 12);
+    px(ctx, bx + 2, bTop + 2, 4, bH - 6, '#222732');           // ombre flanc gauche
+    px(ctx, bx + bw - 6, bTop + 2, 4, bH - 6, '#222732');      // ombre flanc droit
+    // bedaine : reflet bombé au centre
+    ctx.fillStyle = '#3d4452';
+    ctx.beginPath();
+    ctx.ellipse(cx, bTop + bH * 0.62, bw * 0.30, bH * 0.34, 0, 0, 7);
+    ctx.fill();
+    // liseré rouge SNCF qui suit le ventre
+    px(ctx, bx + 4, bTop + 14, bw - 8, 3, '#d8262c');
+    // fermeture éclair centrale
+    px(ctx, cx - 1, bTop + 4, 2, bH - 8, '#4a515f');
+    // col montant
+    px(ctx, cx - 11, top + 12, 22, 8, '#222732');
+    px(ctx, cx - 11, top + 12, 22, 2, '#d8262c');
+    // badge nominatif blanc
+    px(ctx, cx + 4, bTop + 6, 13, 6, '#eee');
+    px(ctx, cx + 5, bTop + 7, 2, 4, '#d8262c');
+    px(ctx, cx + 8, bTop + 9, 7, 1, '#888');
+    // deux boutons sur le bas du ventre
+    px(ctx, cx - 1, bTop + 22, 3, 3, '#d8262c');
+    px(ctx, cx - 1, bTop + 30, 3, 3, '#1c212b');
+
+    // ===== BRAS charnus =====
+    if (air) {
+      // bras croisés par-dessus le gros ventre
+      px(ctx, bx + 2, bTop + 16, bw - 4, 13, '#252b36');
+      px(ctx, bx + 2, bTop + 16, bw - 4, 3, '#d8262c');
+      px(ctx, bx + 2, bTop + 18, 10, 11, '#d8a07a');           // main gauche
+      px(ctx, bx + bw - 12, bTop + 18, 10, 11, '#d8a07a');     // main droite
+    } else {
+      const armA = Math.sin(rp) * 6;
+      // bras gauche (arrière) épais
+      px(ctx, bx - 2, bTop + 4, 12, 20, '#252b36');
+      px(ctx, bx - 2, bTop + 22 - armA, 12, 10, '#252b36');
+      px(ctx, bx - 1, bTop + 30 - armA, 10, 9, '#d8a07a');     // grosse main
+      // bras droit (avant) épais
+      px(ctx, bx + bw - 10, bTop + 4, 12, 20, '#2b313d');
+      px(ctx, bx + bw - 10, bTop + 22 + armA, 12, 10, '#2b313d');
+      px(ctx, bx + bw - 9, bTop + 30 + armA, 10, 9, '#d8a07a');
+    }
+
+    // ===== TÊTE poupin (joufflue, double menton) =====
+    const bob = air ? 0 : Math.abs(Math.sin(rp)) * 1.5;
+    const ty = top - bob;
+    const hx = cx - 14;          // visage centré, plus large
+    // cou épais / double menton
+    px(ctx, cx - 11, ty + 12, 22, 8, '#cf9a72');
+    px(ctx, cx - 9, ty + 17, 18, 4, '#c08a64');   // pli du double menton
+    // visage rond et joufflu
+    ctx.fillStyle = '#e0b088';
+    ctx.beginPath();
+    ctx.ellipse(cx, ty + 5, 16, 14, 0, 0, 7);
+    ctx.fill();
+    // joues bien rebondies
+    ctx.fillStyle = '#e8bc94';
+    ctx.beginPath(); ctx.arc(cx - 11, ty + 9, 5, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 11, ty + 9, 5, 0, 7); ctx.fill();
+    // dessus du crâne dégarni (peau claire)
+    ctx.fillStyle = '#e8bc94';
+    ctx.beginPath(); ctx.ellipse(cx, ty - 6, 14, 7, 0, Math.PI, 0); ctx.fill();
+    px(ctx, cx - 6, ty - 9, 12, 2, '#f0c8a0');    // reflet calvitie
+    // CHEVEUX gris plaqués en arrière (couronne basse + tempes)
+    px(ctx, hx - 3, ty - 2, 4, 10, '#9a9a9a');    // tempe gauche
+    px(ctx, hx + 27, ty - 2, 4, 10, '#9a9a9a');   // tempe droite
+    px(ctx, hx - 2, ty - 1, 32, 2, '#b0b0b0');    // mèches plaquées
+    px(ctx, hx - 1, ty + 1, 30, 1, '#a4a4a4');
+    px(ctx, hx + 28, ty - 1, 5, 12, '#8a8a8a');   // touffe arrière dense
+    // sourcils
+    px(ctx, cx - 11, ty + 1, 6, 2, '#8a8a8a');
+    px(ctx, cx + 5, ty + 1, 6, 2, '#8a8a8a');
+    // yeux + clignement
+    if (this.blink > 0) {
+      px(ctx, cx - 10, ty + 4, 5, 1, '#5a4030');
+      px(ctx, cx + 5, ty + 4, 5, 1, '#5a4030');
+      this.blink--;
+    } else {
+      px(ctx, cx - 10, ty + 3, 5, 5, '#3a2a1a');
+      px(ctx, cx + 5, ty + 3, 5, 5, '#3a2a1a');
+      px(ctx, cx - 9, ty + 3, 2, 2, '#fff');
+      px(ctx, cx + 6, ty + 3, 2, 2, '#fff');
+    }
+    // gros nez rond
+    px(ctx, cx - 2, ty + 6, 4, 5, '#cf9a72');
+    px(ctx, cx - 2, ty + 9, 4, 2, '#b8855f');
+    // barbe grise qui entoure les joues rondes
+    px(ctx, hx, ty + 11, 28, 8, '#c4c4c4');
+    px(ctx, hx + 2, ty + 15, 24, 4, '#b0b0b0');
+    px(ctx, hx + 6, ty + 18, 16, 3, '#a8a8a8');
+    px(ctx, cx - 7, ty + 9, 14, 2, '#bcbcbc');    // moustache fournie
+  }
+
+  // dessine un corps arrondi (rectangle aux coins arrondis)
+  _roundBody(ctx, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // jambe articulée trapue : cuisse + mollet + grosse chaussure, pied au sol
+  _leg(ctx, hipX, base, swing, air, col) {
+    const hipY = base - 28;
+    if (air) {
+      px(ctx, hipX - 7, hipY, 15, 16, col);
+      px(ctx, hipX - 5, hipY + 14, 15, 13, col);
+      px(ctx, hipX - 7, base - 4, 19, 6, '#0a0a0a');
+      return;
+    }
+    const kneeX = hipX + swing * 9;
+    const kneeY = hipY + 15;
+    const footX = hipX + swing * 16;
+    const footLift = swing < 0 ? (-swing * 8) : 0;  // le pied arrière se lève
+    const footY = base - footLift;
+    thickLine(ctx, hipX, hipY, kneeX, kneeY, 13, col);   // cuisse épaisse
+    thickLine(ctx, kneeX, kneeY, footX, footY - 4, 11, col); // mollet épais
+    px(ctx, footX - 9, footY - 6, 20, 6, '#0a0a0a');     // grosse chaussure
+    px(ctx, footX - 9, footY - 6, 20, 2, '#3a3a3a');
+  }
+}
+
+/* ===== js/obstacles.js ===== */
+/* =========================================================
+   CONZANOV — obstacles.js
+   Hérissons et caravanes (agrandis, plus visibles et détaillés)
+   + fagots de cuivre (bonus de vie).
+   Tout repose sur la ligne du rail : CFG.RAIL_TOP.
+   ========================================================= */
+
+class Obstacle {
+  constructor(type) {
+    this.type = type;
+    this.x = CFG.W + 30;
+    this.hit = false;
+    this.passed = false;
+    this.yOff = 0;        // décalage vertical (pour le hérisson sauteur)
+    this.hopPhase = Math.random() * Math.PI * 2;
+    if (type === 'hog' || type === 'jumphog') {
+      this.w = CFG.HEDGEHOG.w;
+      this.h = CFG.HEDGEHOG.h;
+    } else {
+      this.w = CFG.CARAVAN.w;
+      this.h = CFG.CARAVAN.h;
+    }
+  }
+
+  get bounds() {
+    // yOff <= 0 : le hérisson sauteur s'élève au-dessus du rail
+    return {
+      L: this.x + 4,
+      R: this.x + this.w - 4,
+      T: CFG.RAIL_TOP - this.h + this.yOff,
+      B: CFG.RAIL_TOP + this.yOff,
+    };
+  }
+
+  update(speed) {
+    this.x -= speed;
+    if (this.type === 'jumphog') {
+      // saut en arc continu : rebondit régulièrement (hauteur ~95 px)
+      this.hopPhase += 0.07 + speed * 0.004;
+      const hop = Math.abs(Math.sin(this.hopPhase));
+      this.yOff = -hop * 95;   // négatif = vers le haut
+    }
+  }
+  offscreen() { return this.x < -140; }
+
+  draw(ctx, frame) {
+    if (this.type === 'caravan') { this._caravan(ctx, frame); return; }
+    // ombre projetée au sol : reste sur le rail, rétrécit quand il monte
+    const lift = -this.yOff; // positif quand en l'air
+    const shrink = Math.max(0.4, 1 - lift / 130);
+    ctx.fillStyle = `rgba(0,0,0,${0.28 * shrink})`;
+    ctx.beginPath();
+    ctx.ellipse(this.x + this.w / 2, CFG.RAIL_TOP + 2, (this.w / 2) * shrink, 5 * shrink, 0, 0, 7);
+    ctx.fill();
+    // hérisson (au sol ou sauteur) : on translate selon yOff
+    ctx.save();
+    ctx.translate(0, this.yOff);
+    this._hog(ctx, frame, this.type === 'jumphog');
+    ctx.restore();
+  }
+
+  // ---------- HÉRISSON détaillé et plus gros ----------
+  _hog(ctx, frame, jumping) {
+    const base = CFG.RAIL_TOP, x = this.x, w = this.w, h = this.h;
+    const top = base - h;
+
+    // teinte légèrement différente pour le sauteur (plus rougeâtre/agressif)
+    const bodyDark = jumping ? '#7a3a22' : '#6e4c2c';
+    const bodyMid  = jumping ? '#9a4a2c' : '#825c38';
+    const bodyHi   = jumping ? '#b05a34' : '#9a7048';
+
+    // corps bombé (deux tons)
+    px(ctx, x + 5, top + 8, w - 10, h - 8, bodyDark);
+    px(ctx, x + 8, top + 11, w - 16, h - 14, bodyMid);
+    px(ctx, x + 8, top + 11, w - 16, 4, bodyHi); // reflet dos
+
+    // piquants en 3 couches pour le volume
+    const baseSpikes = top + 9;
+    ctx.fillStyle = '#3a2810';
+    for (let i = 0; i < 11; i++) {
+      const sx = x + 5 + i * ((w - 10) / 10);
+      ctx.beginPath();
+      ctx.moveTo(sx, baseSpikes + 2);
+      ctx.lineTo(sx + 4, baseSpikes - 16);
+      ctx.lineTo(sx + 8, baseSpikes + 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#4e3418';
+    for (let i = 0; i < 10; i++) {
+      const sx = x + 8 + i * ((w - 14) / 9);
+      ctx.beginPath();
+      ctx.moveTo(sx, baseSpikes + 4);
+      ctx.lineTo(sx + 4, baseSpikes - 9);
+      ctx.lineTo(sx + 8, baseSpikes + 4);
+      ctx.fill();
+    }
+    ctx.fillStyle = '#5e3e1e';
+    for (let i = 0; i < 9; i++) {
+      const sx = x + 11 + i * ((w - 20) / 8);
+      ctx.beginPath();
+      ctx.moveTo(sx, baseSpikes + 6);
+      ctx.lineTo(sx + 3, baseSpikes - 3);
+      ctx.lineTo(sx + 6, baseSpikes + 6);
+      ctx.fill();
+    }
+
+    // tête / museau (à gauche, vers l'avant)
+    px(ctx, x - 8, base - 18, 14, 14, '#9a7450');
+    px(ctx, x - 8, base - 18, 14, 4, '#a8825e');
+    // nez pointu
+    px(ctx, x - 12, base - 12, 6, 6, '#2a1a10');
+    px(ctx, x - 11, base - 11, 2, 2, '#6a4a30');
+    px(ctx, x - 12, base - 12, 2, 2, '#fff');
+    // oeil
+    px(ctx, x + 1, base - 16, 4, 4, '#141414');
+    px(ctx, x + 2, base - 16, 1, 1, '#fff');
+    // petite oreille ronde
+    px(ctx, x + 3, base - 22, 5, 5, '#825c38');
+
+    if (jumping) {
+      // pattes repliées (en plein saut) + petits traits de mouvement
+      px(ctx, x + 10, base - 3, 6, 4, '#5a3a20');
+      px(ctx, x + w - 18, base - 3, 6, 4, '#5a3a20');
+      ctx.strokeStyle = 'rgba(255,255,255,.5)';
+      ctx.lineWidth = 2;
+      for (let k = 0; k < 3; k++) {
+        const ly = top + 6 + k * 10;
+        ctx.beginPath();
+        ctx.moveTo(x + w + 4, ly);
+        ctx.lineTo(x + w + 14, ly);
+        ctx.stroke();
+      }
+    } else {
+      // pattes qui trottinent
+      const t = Math.sin(frame * 0.5) * 3;
+      px(ctx, x + 10, base - 5, 5, 6 + t, '#5a3a20');
+      px(ctx, x + w - 18, base - 5, 5, 6 - t, '#5a3a20');
+      px(ctx, x + 10, base + (6 + t) - 6, 6, 3, '#3a2410'); // petite patte
+      px(ctx, x + w - 18, base + (6 - t) - 6, 6, 3, '#3a2410');
+    }
+  }
+
+  // ---------- CARAVANE détaillée et plus grosse ----------
+  _caravan(ctx, frame) {
+    const base = CFG.RAIL_TOP, x = this.x, w = this.w, h = this.h;
+    const top = base - h;
+
+    // ombre
+    ctx.fillStyle = 'rgba(0,0,0,.28)';
+    ctx.beginPath(); ctx.ellipse(x + w / 2, base + 2, w / 2, 6, 0, 0, 7); ctx.fill();
+
+    // corps crème galbé
+    px(ctx, x + 6, top, w - 12, h - 14, '#ece4d2');
+    px(ctx, x, top + 12, w, h - 26, '#ece4d2');
+    px(ctx, x, top + 12, w, 5, '#fff7e8');       // reflet toit
+    px(ctx, x, top + h - 20, w, 5, '#c6baa2');    // ombre bas
+    // toit arrondi
+    px(ctx, x + 10, top - 4, w - 20, 6, '#e0d6c0');
+    px(ctx, x + 18, top - 8, w - 36, 5, '#e8dec8');
+    // évent de toit
+    px(ctx, x + w * 0.5 - 8, top - 12, 16, 5, '#b8a888');
+
+    // bandes déco rouge + jaune (propagande)
+    px(ctx, x, top + h * 0.42, w, 8, '#d8262c');
+    px(ctx, x, top + h * 0.42 + 8, w, 4, '#ffcf3f');
+
+    // étoile soviétique peinte sur le flanc
+    const sx = x + w * 0.72, sy = top + h * 0.25;
+    ctx.fillStyle = '#d8262c';
+    this._star(ctx, sx, sy, 10);
+
+    // grande fenêtre avec rideaux
+    px(ctx, x + 12, top + 16, 34, 26, '#5a3a2a');
+    px(ctx, x + 15, top + 19, 28, 20, '#8fc8d8');
+    px(ctx, x + 15, top + 19, 14, 20, '#a8d8e8');
+    px(ctx, x + 15, top + 19, 28, 4, '#c8e8f0');
+    // rideaux
+    px(ctx, x + 15, top + 19, 5, 20, '#d85a4a');
+    px(ctx, x + 38, top + 19, 5, 20, '#d85a4a');
+
+    // porte
+    px(ctx, x + w - 38, top + 16, 26, h - 30, '#b8a888');
+    px(ctx, x + w - 38, top + 16, 26, 3, '#d0c0a0');
+    px(ctx, x + w - 38, top + 16, 3, h - 30, '#9a8a6a');
+    px(ctx, x + w - 20, top + 32, 4, 5, '#3a2a1a'); // poignée
+    // petite marche
+    px(ctx, x + w - 36, base - 4, 22, 4, '#7a6a4a');
+
+    // attelage à gauche
+    px(ctx, x - 10, top + h - 22, 12, 4, '#3a3a3a');
+    px(ctx, x - 12, top + h - 24, 5, 8, '#2a2a2a');
+
+    // roues
+    const wy = base - 1;
+    ctx.fillStyle = '#161616';
+    ctx.beginPath(); ctx.arc(x + w * 0.30, wy, 13, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + w * 0.72, wy, 13, 0, 7); ctx.fill();
+    ctx.fillStyle = '#444';
+    ctx.beginPath(); ctx.arc(x + w * 0.30, wy, 6, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(x + w * 0.72, wy, 6, 0, 7); ctx.fill();
+    ctx.fillStyle = '#888';
+    px(ctx, x + w * 0.30 - 1, wy - 8, 2, 2);
+    px(ctx, x + w * 0.72 - 1, wy - 8, 2, 2);
+  }
+
+  _star(ctx, cx, cy, r) {
+    ctx.beginPath();
+    for (let i = 0; i < 5; i++) {
+      const a = -Math.PI / 2 + i * (Math.PI * 2 / 5);
+      const a2 = a + Math.PI / 5;
+      ctx.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+      ctx.lineTo(cx + Math.cos(a2) * r * 0.45, cy + Math.sin(a2) * r * 0.45);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+// ---------- FAGOT DE CUIVRE (bonus de vie) ----------
+class Fagot {
+  constructor() {
+    this.x = CFG.W + 30;
+    this.y = CFG.GROUND - 120 - Math.random() * 70;
+    this.w = CFG.FAGOT.w;
+    this.h = CFG.FAGOT.h;
+  }
+  get bounds() { return { L: this.x, R: this.x + this.w, T: this.y, B: this.y + this.h }; }
+  update(speed) { this.x -= speed; }
+  offscreen() { return this.x < -50; }
+
+  draw(ctx, frame) {
+    const x = this.x, y = this.y, bob = Math.sin(frame * 0.12) * 4;
+    ctx.save();
+    ctx.translate(x, y + bob);
+    // halo doré
+    const hg = ctx.createRadialGradient(12, 14, 2, 12, 14, 28);
+    hg.addColorStop(0, 'rgba(255,190,70,.6)');
+    hg.addColorStop(1, 'rgba(255,190,70,0)');
+    ctx.fillStyle = hg;
+    ctx.beginPath(); ctx.arc(12, 14, 28, 0, 7); ctx.fill();
+    // étincelles
+    if (frame % 30 < 4) { px(ctx, 24, -2, 3, 3, '#fff'); px(ctx, -3, 22, 2, 2, '#fff'); }
+    // 6 tubes de cuivre
+    for (let i = 0; i < 6; i++) {
+      const tx = 2 + i * 4;
+      px(ctx, tx, 0, 3, 30, '#9a521c');
+      px(ctx, tx, 0, 2, 30, i % 2 ? '#cf7a2e' : '#b8661f');
+      px(ctx, tx, 1, 1, 28, '#e8a050');
+      px(ctx, tx, 0, 3, 2, '#f0c070');
+      px(ctx, tx, 28, 3, 2, '#723a12');
+    }
+    // liens
+    px(ctx, -1, 8, 28, 4, '#46290e'); px(ctx, -1, 8, 28, 1, '#6a4520');
+    px(ctx, -1, 22, 28, 4, '#46290e'); px(ctx, -1, 22, 28, 1, '#6a4520');
+    ctx.restore();
+  }
+}
+
+/* ===== js/game.js ===== */
+/* =========================================================
+   CONZANOV — game.js
+   Le moteur : boucle principale, progression (niveaux + zones),
+   spawn, collisions, score, vies, effets.
+   ========================================================= */
+
+class Game {
+  constructor(ctx, ui) {
+    this.ctx = ctx;
+    this.ui = ui;                 // références DOM (voir main.js)
+    this.bg = new Background();
+    this.player = new Player();
+    this.parts = new Particles();
+    this.obs = [];
+    this.items = [];
+    this.running = false;
+    this.raf = null;
+    // mémorise uniquement les lignes de règles (sans le <h2> d'origine)
+    // pour pouvoir les réafficher sur l'écran de fin
+    const rulesBox = ui.overlay.querySelector('.rules');
+    this.rulesHTML = Array.from(rulesBox.querySelectorAll('.rule'))
+      .map(el => el.outerHTML).join('');
+  }
+
+  reset() {
+    this.bg.reset();
+    this.player.reset();
+    this.parts.clear();
+    this.obs = [];
+    this.items = [];
+    this.lives = 3;
+    this.score = 0;
+    this.level = 1;
+    this.speed = CFG.SPEED_START;
+    this.spawnQueue = [];
+    this.nextPatternAt = 70;     // premier obstacle après un court répit
+    this.itemT = 320;
+    this.bgX = 0;
+    this.frame = 0;
+    this.flash = 0;
+    this.heartPop = 0;
+    this.shake = 0;
+    this.combo = 0;
+    this.comboT = 0;
+    this.lvlUpT = 0;
+    this.bg.setZone(zoneForLevel(1));
+    this.bg.blend = 1;            // pas de transition au tout début
+    this._syncHud();
+    this.ui.zone.textContent = '— ' + this.bg.target.name + ' —';
+    this.ui.combo.textContent = '';
+  }
+
+  _syncHud() {
+    // cœurs
+    this.ui.hearts.innerHTML = '';
+    for (let i = 0; i < 3; i++) {
+      const s = document.createElement('span');
+      s.textContent = i < this.lives ? '❤️' : '🖤';
+      this.ui.hearts.appendChild(s);
+    }
+    this.ui.level.textContent = 'NIVEAU ' + this.level;
+  }
+
+  /* ---- entrée déléguée au joueur : un seul tap ---- */
+  tap() {
+    if (!this.running) return;
+    this.player.tap(this.parts);
+  }
+
+  start() {
+    this.reset();
+    this.ui.overlay.classList.add('hide');
+    this.running = true;
+    this.loop();
+  }
+
+  /* ---- progression : niveau, vitesse, zone ---- */
+  _progress() {
+    this.score += 1;
+    const newLevel = 1 + Math.floor(this.score / CFG.LEVEL_DIST);
+    if (newLevel !== this.level) {
+      this.level = newLevel;
+      this._syncHud();
+      const z = zoneForLevel(this.level);
+      if (z !== this.bg.target) {
+        this.bg.setZone(z);
+        this.ui.zone.textContent = '— ' + z.name + ' —';
+        this._levelUp('NOUVELLE ZONE', z.name);
+      } else {
+        this._levelUp('NIVEAU ' + this.level, 'Plus vite, camarade !');
+      }
+      this.parts.burst(this.player.x, this.player.y - 30, '#ffd23f', 18);
+    }
+    // vitesse : palier par niveau + dérive douce intra-niveau
+    const baseSpeed = CFG.SPEED_START + (this.level - 1) * CFG.SPEED_PER_LEVEL;
+    const intra = (this.score % CFG.LEVEL_DIST) / CFG.LEVEL_DIST;
+    this.speed = baseSpeed + intra * CFG.SPEED_DRIFT;
+  }
+
+  _levelUp(big, small) {
+    this.ui.lvlUp.innerHTML = big + '<small>' + small + '</small>';
+    this.lvlUpT = 80;
+  }
+
+  // file d'attente d'apparitions : chaque entrée = {type, delay} en frames
+  _queuePattern() {
+    const lvl = this.level;
+    // catalogue de patterns, débloqués selon le niveau
+    // "gap" exprimé en frames avant le PROCHAIN élément
+    const G = () => 26 + Math.random() * 14;   // petit écart intra-pattern
+    const patterns = [];
+
+    // toujours dispo : obstacle simple
+    patterns.push([{ type: 'hog' }]);
+    patterns.push([{ type: 'caravan' }]);
+
+    if (lvl >= 2) {
+      // double hérisson rapproché
+      patterns.push([{ type: 'hog' }, { gap: 30, type: 'hog' }]);
+    }
+    if (lvl >= 3) {
+      // hérisson sauteur : menace en hauteur
+      patterns.push([{ type: 'jumphog' }]);
+      // caravane puis hérisson : sauter haut puis enchaîner bas
+      patterns.push([{ type: 'caravan' }, { gap: 42, type: 'hog' }]);
+    }
+    if (lvl >= 4) {
+      // triplé de hérissons en escalier
+      patterns.push([{ type: 'hog' }, { gap: 28, type: 'hog' }, { gap: 28, type: 'hog' }]);
+      // sauteur encadré de deux hérissons au sol
+      patterns.push([{ type: 'hog' }, { gap: 40, type: 'jumphog' }, { gap: 40, type: 'hog' }]);
+    }
+    if (lvl >= 5) {
+      // caravane + sauteur : il faut un grand saut puis gérer le sauteur
+      patterns.push([{ type: 'caravan' }, { gap: 50, type: 'jumphog' }]);
+      // deux sauteurs : rythme de double/triple saut
+      patterns.push([{ type: 'jumphog' }, { gap: 46, type: 'jumphog' }]);
+    }
+    if (lvl >= 6) {
+      // séquence dense mixte
+      patterns.push([
+        { type: 'hog' }, { gap: 30, type: 'caravan' },
+        { gap: 48, type: 'jumphog' }, { gap: 34, type: 'hog' },
+      ]);
+    }
+
+    // privilégie un peu les patterns récents (plus durs) aux niveaux élevés
+    const chosen = patterns[Math.floor(Math.random() * patterns.length)];
+    let acc = 0;
+    for (const item of chosen) {
+      acc += item.gap || 0;
+      this.spawnQueue.push({ type: item.type, at: this.frame + acc });
+    }
+    // pause après le pattern, qui se resserre avec la vitesse
+    const rest = Math.max(40, 120 - this.speed * 7) + Math.random() * 50;
+    this.nextPatternAt = this.frame + acc + rest;
+  }
+
+  _spawn() {
+    if (!this.spawnQueue) { this.spawnQueue = []; this.nextPatternAt = this.frame + 60; }
+
+    // sortie des éléments du pattern courant quand leur instant arrive
+    for (let i = this.spawnQueue.length - 1; i >= 0; i--) {
+      if (this.frame >= this.spawnQueue[i].at) {
+        this.obs.push(new Obstacle(this.spawnQueue[i].type));
+        this.spawnQueue.splice(i, 1);
+      }
+    }
+    // nouveau pattern quand l'actuel est écoulé
+    if (this.frame >= this.nextPatternAt && this.spawnQueue.length === 0) {
+      this._queuePattern();
+    }
+
+    // fagots de cuivre (bonus de vie)
+    this.itemT--;
+    if (this.itemT <= 0) {
+      if (this.lives < 3) this.items.push(new Fagot());
+      this.itemT = 340 + Math.random() * 260;
+    }
+  }
+
+  _collisions() {
+    const pb = this.player.bounds;
+
+    for (let i = this.obs.length - 1; i >= 0; i--) {
+      const o = this.obs[i];
+      o.update(this.speed);
+      const ob = o.bounds;
+      if (!o.hit && pb.R > ob.L && pb.L < ob.R && pb.B > ob.T && pb.T < ob.B) {
+        o.hit = true;
+        this.lives--;
+        this._syncHud();
+        this.flash = 12; this.shake = 10;
+        this.combo = 0; this.comboT = 0; this.ui.combo.textContent = '';
+        this.parts.burst(this.player.x, this.player.y - 30, '#d8262c', 14);
+        if (this.lives <= 0) { this.gameOver(); return false; }
+      }
+      // combo en franchissant proprement
+      if (!o.passed && o.x + o.w < this.player.x - 18) {
+        o.passed = true;
+        this.combo++;
+        this.comboT = 170;
+        this.score += 8 * this.combo;
+        if (this.combo > 1) this.ui.combo.textContent = 'COMBO x' + this.combo;
+      }
+      if (o.offscreen()) this.obs.splice(i, 1);
+    }
+
+    for (let i = this.items.length - 1; i >= 0; i--) {
+      const it = this.items[i];
+      it.update(this.speed);
+      const ib = it.bounds;
+      if (pb.R > ib.L && pb.L < ib.R && pb.B > ib.T && pb.T < ib.B) {
+        this.items.splice(i, 1);
+        if (this.lives < 3) { this.lives++; this._syncHud(); this.heartPop = 22; }
+        this.score += 60;
+        this.parts.burst(it.x + 12, it.y + 14, '#ffcf3f', 16);
+        continue;
+      }
+      if (it.offscreen()) this.items.splice(i, 1);
+    }
+    return true;
+  }
+
+  loop() {
+    if (!this.running) return;
+    const ctx = this.ctx;
+    this.frame++;
+    this.bgX += this.speed;
+
+    this.player.update(this.speed, this.parts);
+    this._progress();
+    this._spawn();
+    if (this.comboT > 0 && --this.comboT === 0) { this.combo = 0; this.ui.combo.textContent = ''; }
+    if (!this._collisions()) return;
+
+    /* ---- RENDU ---- */
+    ctx.save();
+    if (this.shake > 0) {
+      ctx.translate((Math.random() - 0.5) * this.shake, (Math.random() - 0.5) * this.shake);
+      this.shake -= 0.8;
+    }
+    this.bg.draw(ctx, this.speed, this.bgX, this.frame);
+    this.items.forEach(it => it.draw(ctx, this.frame));
+    this.obs.forEach(o => o.draw(ctx, this.frame));
+    this.bg.drawGround(ctx, this.bgX);
+    this.player.draw(ctx);
+    this.parts.update(ctx);
+
+    if (this.heartPop > 0) {
+      ctx.globalAlpha = this.heartPop / 22;
+      ctx.font = '30px serif';
+      ctx.fillText('❤️', this.player.x - 15, this.player.y - this.player.h - 12 - (22 - this.heartPop));
+      ctx.globalAlpha = 1;
+      this.heartPop--;
+    }
+    ctx.restore();
+
+    if (this.flash > 0) {
+      ctx.fillStyle = `rgba(216,38,44,${this.flash / 22})`;
+      ctx.fillRect(0, 0, CFG.W, CFG.H);
+      this.flash--;
+    }
+
+    // bandeau niveau / zone
+    if (this.lvlUpT > 0) {
+      this.lvlUpT--;
+      const fadeIn = Math.min(1, (80 - this.lvlUpT) / 8);
+      const fadeOut = Math.min(1, this.lvlUpT / 20);
+      this.ui.lvlUp.style.opacity = fadeIn * fadeOut;
+    } else {
+      this.ui.lvlUp.style.opacity = 0;
+    }
+
+    this.ui.score.textContent = Math.floor(this.score / 10);
+    this.raf = requestAnimationFrame(() => this.loop());
+  }
+
+  // écran d'attente animé (décor qui vit doucement)
+  idle() {
+    if (this.running) return;
+    const ctx = this.ctx;
+    this.frame++;
+    ctx.save();
+    this.bg.draw(ctx, 1.2, this.bgX += 1.2, this.frame);
+    this.bg.drawGround(ctx, this.bgX);
+    ctx.restore();
+    requestAnimationFrame(() => this.idle());
+  }
+
+  gameOver() {
+    this.running = false;
+    this.ui.lvlUp.style.opacity = 0;
+    const ov = this.ui.overlay;
+    ov.classList.remove('hide');
+    ov.querySelector('.title').innerHTML = 'HALTE !';
+    ov.querySelector('.sub').textContent =
+      'Score ' + Math.floor(this.score / 10) + ' • Niveau ' + this.level;
+    // court rapport, puis rappel complet des règles
+    ov.querySelector('.rules').innerHTML =
+      '<h2>★ Rapport ★</h2>' +
+      '<div class="rule"><span class="ic">🚄</span><span>Le train du Camarade est passé sans toi. Relève-toi et repars pour la patrie !</span></div>' +
+      '<div class="rule" style="margin-top:12px;border-top:2px solid #ffd23f;padding-top:12px"><span class="ic">📋</span><span><b>Rappel des règles :</b></span></div>' +
+      this.rulesHTML;
+    this.ui.btn.textContent = 'Recommencer';
+  }
+}
+
+/* ===== js/main.js ===== */
+/* =========================================================
+   CONZANOV — main.js
+   Point d'entrée : DOM, instanciation, contrôles (tap unique,
+   façon Flappy Bird) et adaptation RESPONSIVE à l'écran :
+   la résolution logique épouse le ratio de la fenêtre
+   (paysage large sur desktop, vertical sur mobile).
+   ========================================================= */
+
+(function () {
+  const cv = document.getElementById('game');
+  const ctx = cv.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+
+  const ui = {
+    hearts:  document.getElementById('hearts'),
+    score:   document.getElementById('scoreVal'),
+    level:   document.getElementById('level'),
+    zone:    document.getElementById('zone'),
+    combo:   document.getElementById('combo'),
+    lvlUp:   document.getElementById('lvlUp'),
+    overlay: document.getElementById('overlay'),
+    btn:     document.getElementById('btn'),
+  };
+
+  const game = new Game(ctx, ui);
+
+  /* ---- Adaptation responsive ----
+     1. on recalcule la résolution logique (CFG.W/H) selon le ratio écran
+     2. le canvas occupe TOUTE la fenêtre (plus de bandes noires)
+     3. on règle la densité de pixels pour rester net */
+  function resize() {
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    // résolution logique adaptée au ratio de l'écran
+    CFG.recompute(vw, vh);
+
+    // le canvas remplit la fenêtre entière
+    cv.style.width = vw + 'px';
+    cv.style.height = vh + 'px';
+
+    // pixels physiques = résolution logique * densité (borne à 2 pour la perf)
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(CFG.W * dpr);
+    cv.height = Math.round(CFG.H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+
+    // le décor a été semé avec d'anciennes dimensions : on le régénère
+    if (game.bg) game.bg.reset();
+    // on replace le joueur sur le nouveau sol
+    if (game.player && !game.running) game.player.y = CFG.GROUND;
+  }
+  window.addEventListener('resize', resize);
+  window.addEventListener('orientationchange', resize);
+  resize();
+
+  ui.btn.addEventListener('click', e => { e.stopPropagation(); game.start(); });
+
+  function doTap() {
+    if (!game.running) {
+      if (!ui.overlay.classList.contains('hide')) game.start();
+      return;
+    }
+    game.tap();
+  }
+
+  cv.addEventListener('mousedown', e => { e.preventDefault(); doTap(); });
+  cv.addEventListener('touchstart', e => { e.preventDefault(); doTap(); }, { passive: false });
+
+  let spaceDown = false;
+  window.addEventListener('keydown', e => {
+    if (e.code === 'Space' || e.code === 'ArrowUp') {
+      e.preventDefault();
+      if (spaceDown) return;
+      spaceDown = true;
+      doTap();
+    }
+  });
+  window.addEventListener('keyup', e => {
+    if (e.code === 'Space' || e.code === 'ArrowUp') spaceDown = false;
+  });
+
+  game.idle();
+})();
+
+</script>
+</body>
+</html>
